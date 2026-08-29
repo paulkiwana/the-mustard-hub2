@@ -68,4 +68,18 @@
   // ---- Footer year ----
   var yearEl = document.getElementById("year");
   if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  // ---- Hero slideshow ----
+  var slideshow = document.getElementById("heroSlideshow");
+  if (slideshow && !prefersReducedMotion) {
+    var slides = slideshow.querySelectorAll(".hero-slide");
+    if (slides.length > 1) {
+      var current = 0;
+      setInterval(function () {
+        slides[current].classList.remove("active");
+        current = (current + 1) % slides.length;
+        slides[current].classList.add("active");
+      }, 5500);
+    }
+  }
 })();
