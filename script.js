@@ -83,3 +83,135 @@
     }
   }
 })();
+
+// ===========================================================
+// LIGHTBOX — full-size image modal with backdrop blur
+// Auto-attaches to any .gallery-card figure on the page
+// ===========================================================
+(function () {
+  "use strict";
+
+  var cards = document.querySelectorAll(".gallery-card");
+  if (!cards.length) return;
+
+  var ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  var ICON_ARROW_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>';
+  var ICON_ARROW_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  var ICON_ZOOM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg>';
+
+  // Build item list from the cards already on the page
+  var items = Array.prototype.map.call(cards, function (card) {
+    var img = card.querySelector("img");
+    var caption = card.querySelector("figcaption");
+    return {
+      src: img ? img.getAttribute("src") : "",
+      alt: img ? img.getAttribute("alt") || "" : "",
+      caption: caption ? caption.textContent.trim() : ""
+    };
+  });
+
+  // Add a subtle zoom hint icon to each card (visual affordance only)
+  cards.forEach(function (card) {
+    if (card.querySelector(".gallery-zoom-hint")) return;
+    var hint = document.createElement("span");
+    hint.className = "gallery-zoom-hint";
+    hint.setAttribute("aria-hidden", "true");
+    hint.innerHTML = ICON_ZOOM;
+    card.appendChild(hint);
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", "View larger image" + (card.querySelector("figcaption") ? ": " + card.querySelector("figcaption").textContent.trim() : ""));
+  });
+
+  // Build the lightbox DOM once
+  var lightbox = document.createElement("div");
+  lightbox.className = "lightbox";
+  lightbox.setAttribute("role", "dialog");
+  lightbox.setAttribute("aria-modal", "true");
+  lightbox.setAttribute("aria-hidden", "true");
+  lightbox.innerHTML =
+    '<button type="button" class="lightbox-close" aria-label="Close">' + ICON_CLOSE + "</button>" +
+    (items.length > 1
+      ? '<button type="button" class="lightbox-prev" aria-label="Previous image">' + ICON_ARROW_L + "</button>" +
+        '<button type="button" class="lightbox-next" aria-label="Next image">' + ICON_ARROW_R + "</button>"
+      : "") +
+    '<figure class="lightbox-figure">' +
+      '<img class="lightbox-img" src="" alt="">' +
+      '<figcaption class="lightbox-caption"></figcaption>' +
+    "</figure>" +
+    (items.length > 1 ? '<div class="lightbox-counter"></div>' : "");
+  document.body.appendChild(lightbox);
+
+  var imgEl = lightbox.querySelector(".lightbox-img");
+  var captionEl = lightbox.querySelector(".lightbox-caption");
+  var counterEl = lightbox.querySelector(".lightbox-counter");
+  var closeBtn = lightbox.querySelector(".lightbox-close");
+  var prevBtn = lightbox.querySelector(".lightbox-prev");
+  var nextBtn = lightbox.querySelector(".lightbox-next");
+
+  var activeIndex = 0;
+  var lastFocused = null;
+
+  function render() {
+    var item = items[activeIndex];
+    imgEl.src = item.src;
+    imgEl.alt = item.alt;
+    captionEl.textContent = item.caption;
+    if (counterEl) counterEl.textContent = (activeIndex + 1) + " / " + items.length;
+  }
+
+  function openAt(index) {
+    activeIndex = index;
+    lastFocused = document.activeElement;
+    render();
+    lightbox.classList.add("is-open");
+    lightbox.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    closeBtn.focus();
+  }
+
+  function close() {
+    lightbox.classList.remove("is-open");
+    lightbox.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
+  }
+
+  function next() {
+    activeIndex = (activeIndex + 1) % items.length;
+    render();
+  }
+
+  function prev() {
+    activeIndex = (activeIndex - 1 + items.length) % items.length;
+    render();
+  }
+
+  cards.forEach(function (card, index) {
+    card.addEventListener("click", function () {
+      openAt(index);
+    });
+    card.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openAt(index);
+      }
+    });
+  });
+
+  closeBtn.addEventListener("click", close);
+  if (prevBtn) prevBtn.addEventListener("click", prev);
+  if (nextBtn) nextBtn.addEventListener("click", next);
+
+  // Click outside the image/figure closes the lightbox
+  lightbox.addEventListener("click", function (e) {
+    if (e.target === lightbox) close();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (!lightbox.classList.contains("is-open")) return;
+    if (e.key === "Escape") close();
+    if (e.key === "ArrowRight" && nextBtn) next();
+    if (e.key === "ArrowLeft" && prevBtn) prev();
+  });
+})();
